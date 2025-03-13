@@ -1,0 +1,21 @@
+# Core dependencies
+google-cloud-speech
+google-cloud-texttospeech
+google-genai
+pyaudio
+numpy
+
+# Event handling and async
+asyncio
+
+# Data processing and metrics
+pandas
+tabulate
+matplotlib
+statistics
+
+# Environment variables
+python-dotenv
+
+# Logging and utilities
+logging 
