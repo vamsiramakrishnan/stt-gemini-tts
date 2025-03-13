@@ -386,6 +386,97 @@ Key configuration settings are defined in `config.py`:
   - Location: us-central1 (for Gemini AI)
   - STT Location: global (for Speech-to-Text)
 
+### Configuration Parameters and Performance Impact
+
+The system's performance and latency are significantly affected by various configuration parameters. This section provides a comprehensive overview of these parameters and their impact on system performance.
+
+#### Audio Processing Parameters
+
+| Parameter | Location | Default Value | Impact on Latency/Performance |
+|-----------|----------|---------------|-------------------------------|
+| `FORMAT` | config.py | `pyaudio.paInt16` | Lower bit depth reduces processing overhead but may affect quality. |
+| `CHANNELS` | config.py | `1` | Mono audio requires less bandwidth and processing than stereo. |
+| `RATE` | config.py | `16000` Hz | Higher sampling rates increase audio quality but require more bandwidth and processing power. 16kHz is optimal for speech recognition. |
+| `CHUNK` | config.py | `int(RATE / 10)` (1600) | Smaller chunks (100ms) provide more responsive recognition but increase processing overhead. Larger chunks reduce overhead but increase latency. |
+| `PLAYBACK_RATE` | config.py | `24000` Hz | Higher playback rate improves output audio quality but requires more bandwidth and processing. |
+| `STREAMING_LIMIT` | config.py | `60 * 1000` ms (1 minute) | Maximum duration for continuous streaming. Longer limits allow for longer uninterrupted speech but consume more resources. |
+
+#### Speech-to-Text Configuration
+
+| Parameter | Location | Default Value | Impact on Latency/Performance |
+|-----------|----------|---------------|-------------------------------|
+| `model` | modules/config.py | `"latest_short"` | "latest_short" optimizes for lower latency at the cost of some accuracy. "latest_long" would improve accuracy but increase latency. |
+| `auto_punctuation` | modules/config.py | `True` | Adds punctuation automatically but slightly increases processing time. |
+| `enable_voice_activity_events` | modules/config.py | `True` | Enables voice activity detection, which helps reduce unnecessary processing during silence but adds some overhead. |
+| `vad_sensitivity` | modules/config.py | `0.5` | Higher values make the system more sensitive to speech, reducing missed speech but potentially increasing false positives. |
+| `max_alternatives` | modules/config.py | `1` | Requesting multiple alternatives increases processing time and bandwidth usage. |
+
+#### Translation Configuration
+
+| Parameter | Location | Default Value | Impact on Latency/Performance |
+|-----------|----------|---------------|-------------------------------|
+| `model` | modules/config.py | `"gemini-2.0-flash-001"` | Flash model optimizes for speed over accuracy. Using "gemini-2.0-pro" would increase accuracy but also latency. |
+| `temperature` | modules/config.py | `0.2` | Lower temperature (closer to 0) makes output more deterministic and typically faster but less creative. |
+| `max_output_tokens` | modules/config.py | `512` | Higher values allow longer translations but increase potential processing time. |
+| `top_p` | modules/config.py | `0.8` | Controls diversity of generated text. Lower values can speed up generation but reduce diversity. |
+| `top_k` | modules/config.py | `40` | Limits token selection pool. Lower values can speed up generation but may reduce quality. |
+
+#### Text-to-Speech Configuration
+
+| Parameter | Location | Default Value | Impact on Latency/Performance |
+|-----------|----------|---------------|-------------------------------|
+| `speaking_rate` | modules/config.py | `1.0` | Higher rates speed up speech output, reducing overall latency but potentially affecting comprehension. |
+| `pitch` | modules/config.py | `0.0` | Primarily affects quality rather than performance. |
+| `volume_gain_db` | modules/config.py | `0.0` | Primarily affects quality rather than performance. |
+| `enable_streaming` | modules/config.py | `True` | Streaming TTS allows for faster start of playback but requires stable network connection. |
+| `chunk_size` | modules/config.py | `1024` | Larger chunks reduce overhead but increase initial latency. Smaller chunks improve responsiveness but increase processing overhead. |
+
+#### Echo Cancellation Parameters
+
+| Parameter | Location | Default Value | Impact on Latency/Performance |
+|-----------|----------|---------------|-------------------------------|
+| `echo_cancellation_enabled` | modules/config.py | `True` | Prevents feedback loop between microphone and speakers but adds processing overhead. |
+| `echo_suppression_duration` | audio_input.py | `0.5` seconds | Longer duration ensures better echo suppression but may cut off user speech if too long. |
+| `energy_threshold` | audio_input.py | `500` | Higher threshold reduces false positives but may miss quiet speech. Lower threshold captures more speech but may trigger on background noise. |
+
+#### Pipeline and System Configuration
+
+| Parameter | Location | Default Value | Impact on Latency/Performance |
+|-----------|----------|---------------|-------------------------------|
+| `enable_metrics` | modules/config.py | `True` | Provides valuable performance data but adds slight overhead to all operations. |
+| `max_translation_threads` | modules/config.py | `2` | More threads allow parallel translation processing but increase resource usage. |
+
+#### Performance Optimization Recommendations
+
+Based on the configuration parameters, here are key recommendations for optimizing performance:
+
+1. **Audio Processing**: 
+   - Adjust `CHUNK` size based on available processing power. Increase for lower-end devices to reduce overhead.
+   - Keep `RATE` at 16kHz as this is optimal for speech recognition.
+
+2. **Speech-to-Text**:
+   - Use `"latest_short"` model for lower latency applications.
+   - Consider disabling `auto_punctuation` if absolute minimum latency is required.
+   - Tune `vad_sensitivity` based on environment noise levels.
+
+3. **Translation**:
+   - The `"gemini-2.0-flash-001"` model provides the best balance of speed and quality.
+   - Reduce `temperature`, `top_p`, and `top_k` for faster but less diverse translations.
+   - Adjust `max_translation_threads` based on available CPU cores.
+
+4. **Text-to-Speech**:
+   - Increase `speaking_rate` slightly (e.g., to 1.1-1.2) to reduce overall latency without significantly affecting comprehension.
+   - Ensure `enable_streaming` is `True` for faster initial playback.
+   - Optimize `chunk_size` based on network conditions.
+
+5. **Echo Cancellation**:
+   - Disable `echo_cancellation_enabled` in environments where feedback is not a concern to reduce processing overhead.
+   - Reduce `echo_suppression_duration` to minimize added latency.
+
+6. **System-wide**:
+   - Consider disabling `enable_metrics` in production for maximum performance.
+   - Ensure consistent language settings to avoid model switching overhead.
+
 ## Setup and Installation
 
 ### Prerequisites
