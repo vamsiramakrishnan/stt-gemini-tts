@@ -78,6 +78,138 @@ This application follows a modular, event-driven architecture designed for real-
 6. Text-to-Speech service synthesizes speech from the translated text
 7. Audio is played back to the user
 
+## Architecture Diagram
+
+The following diagram illustrates the system architecture and data flow:
+
+```mermaid
+graph TD
+    subgraph User
+        Mic[Microphone Input]
+        Speaker[Speaker Output]
+    end
+
+    subgraph "Speech-to-Speech Translation System"
+        subgraph "Core Services"
+            STT[Speech-to-Text Service]
+            TT[Text Translation Service]
+            TTS[Text-to-Speech Service]
+        end
+
+        subgraph "Infrastructure"
+            EB[Event Bus]
+            Pipeline[Pipeline Service]
+            Config[Configuration]
+        end
+
+        subgraph "Monitoring"
+            Metrics[Metrics System]
+            MetricsInt[Metrics Integration]
+        end
+
+        subgraph "Google Cloud Services"
+            GSTT[Google Speech-to-Text API]
+            GGemini[Google Gemini AI]
+            GTTS[Google Text-to-Speech API]
+        end
+    end
+
+    %% Data flow connections
+    Mic -->|Audio Input| Pipeline
+    Pipeline -->|Audio Chunks| STT
+    STT -->|Audio Stream| GSTT
+    GSTT -->|Transcription| STT
+    STT -->|Publish: transcription| EB
+    EB -->|Subscribe: transcription| TT
+    TT -->|Translation Request| GGemini
+    GGemini -->|Translation Result| TT
+    TT -->|Publish: translation_result| EB
+    EB -->|Subscribe: translation_result| TTS
+    TTS -->|Synthesis Request| GTTS
+    GTTS -->|Audio Data| TTS
+    TTS -->|Publish: tts_audio_chunk| EB
+    EB -->|Subscribe: tts_audio_chunk| Pipeline
+    Pipeline -->|Audio Output| Speaker
+
+    %% Configuration connections
+    Config -.->|Configure| STT
+    Config -.->|Configure| TT
+    Config -.->|Configure| TTS
+    Config -.->|Configure| Pipeline
+
+    %% Metrics connections
+    EB -.->|Events| MetricsInt
+    MetricsInt -.->|Track Metrics| Metrics
+    Metrics -.->|Performance Data| Pipeline
+
+    %% Styling
+    classDef googleCloud fill:#4285F4,stroke:#0F9D58,color:white
+    classDef core fill:#34A853,stroke:#0F9D58,color:white
+    classDef infra fill:#FBBC05,stroke:#EA4335,color:black
+    classDef monitoring fill:#EA4335,stroke:#EA4335,color:white
+    classDef user fill:#9AA0A6,stroke:#5F6368,color:white
+
+    class GSTT,GGemini,GTTS googleCloud
+    class STT,TT,TTS core
+    class EB,Pipeline,Config infra
+    class Metrics,MetricsInt monitoring
+    class Mic,Speaker user
+```
+
+### Component Interaction Sequence
+
+The following sequence diagram shows the interaction between components for a typical speech translation flow:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Pipeline
+    participant STT as Speech-to-Text
+    participant EB as Event Bus
+    participant TT as Text Translation
+    participant TTS as Text-to-Speech
+    participant Metrics
+
+    User->>Pipeline: Speak into microphone
+    Pipeline->>STT: Stream audio chunks
+    
+    Note over STT: Voice activity detection
+    
+    STT->>EB: Publish: speech_start
+    EB->>Metrics: Track speech detection
+    
+    STT->>EB: Publish: transcription (interim)
+    EB->>Metrics: Track first interim result
+    
+    STT->>EB: Publish: transcription (final)
+    EB->>TT: Subscribe: transcription
+    EB->>Metrics: Track final transcription
+    
+    TT->>EB: Publish: translation_start
+    EB->>Metrics: Track translation start
+    
+    TT->>EB: Publish: translation_partial
+    EB->>Metrics: Track first token
+    
+    TT->>EB: Publish: translation_result
+    EB->>TTS: Subscribe: translation_result
+    EB->>Metrics: Track translation complete
+    
+    TTS->>EB: Publish: synthesize_speech
+    EB->>Metrics: Track TTS start
+    
+    TTS->>EB: Publish: tts_audio_chunk
+    EB->>Pipeline: Subscribe: tts_audio_chunk
+    EB->>Metrics: Track first audio byte
+    
+    Pipeline->>User: Play audio output
+    
+    TTS->>EB: Publish: synthesis_complete
+    EB->>Metrics: Track TTS complete
+    
+    Metrics->>Metrics: Calculate end-to-end latency
+```
+
 ## Detailed Module Descriptions
 
 ### Event Bus (`modules/event_bus.py`)
